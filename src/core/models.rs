@@ -7,48 +7,62 @@ pub enum VozResponse<T: Serialize> {
     Failed { message: String }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ForumItem {
-    title: String,
-    thread_number: String,
-    message_number: String,
-    is_unread: bool
+    pub id: String,
+    pub title: String,
+    pub thread_number: String,
+    pub message_number: String,
+    pub forum_type: String,
+    pub is_unread: bool
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Category {
-    title: String,
-    forums: Vec<ForumItem>
+    pub title: String,
+    pub forums: Vec<ForumItem>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Forum {
-    title: String,
-    sub_forums: Vec<ForumItem>,
-    threads: Vec<ThreadItem>
+    pub title: String,
+    pub sub_forums: Vec<ForumItem>,
+    pub threads: Vec<ThreadItem>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadItem {
-    prefix:  Option<ThreadPrefix>,
-    title: String,
-    is_pinned: String,
-    is_read: String,
-    replies: String,
-    latest: String,
-    author: String
+    pub id: String,
+    pub prefix:  Option<ThreadPrefix>,
+    pub title: String,
+    pub is_pinned: bool,
+    pub is_read: bool,
+    pub replies: String,
+    pub latest: String,
+    pub author: String
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadPrefix {
+    pub id: String,
+    pub title: String,
+    pub prefix_type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadPrefix {
-    id: String,
-    title: String,
-    text_color: String,
-    border_color: String,
-    background_color: String
+pub struct User {
+    pub name: String,
+    pub avatar: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged, rename_all = "camelCase")]
+pub enum LoginResult {
+    MFA { token: String, code: String, provider: String },
+    Success { user: String, session: String }
 }
