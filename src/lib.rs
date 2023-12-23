@@ -64,7 +64,7 @@ impl VozCore {
             ("password", password),
             ("remember", "1".to_string()),
         ]);
-        let content = self.client.post(format!("/{0}", login_info.url)).form(&form).send().await?.text().await?;
+        let content = self.client.post(login_info.url).form(&form).send().await?.text().await?;
         let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
         let cookies = self.client.get_cookies();
         if cookies.contains_key("xf_session") {
@@ -75,13 +75,34 @@ impl VozCore {
             } else {
                 let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
                 let login_info = parse_login_form(node)?;
-                Ok(LoginResult::MFA { session: cookies.get("xf_session").unwrap().to_string(), token: login_info.token })
+                Ok(LoginResult::MFA { token: login_info.token, url: login_info.url })
             }
         } else {
             Err("Incorrect login information. Please try again".into())
         }
         
     }
+
+    pub async fn mfa(&self, token: String, url: String, code: String, provider: String) -> Result<LoginResult, Box<dyn std::error::Error>> {
+        let form: HashMap<&str, _> = HashMap::from([
+            ("_xfToken", token),
+            ("trust", 1.to_string()),
+            ("confirm", 1.to_string()),
+            ("remember", 1.to_string()),
+            ("code", code),
+            ("provider", provider)
+        ]);
+        let content = self.client.post(url).form(&form).send().await?.text().await?;
+        let cookies = self.client.get_cookies();
+        if cookies.contains_key("xf_user") {
+            let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
+            let node = document.find(Class("p-nav")).next().ok_or("p-nav does not exist")?;
+            let user_info = parse_current_user(node)?;
+            Ok(LoginResult::Success { user: cookies.get("xf_user").unwrap().to_string(), session: cookies.get("xf_session").unwrap().to_string(), info: user_info})
+        } else {
+            Err("Incorrect login information. Please try again".into())
+        }
+    } 
 
     pub async fn get_current_user(&self) -> Result<User, Box<dyn std::error::Error>> {
         let content = self.client.get("/").send().await?.text().await?;

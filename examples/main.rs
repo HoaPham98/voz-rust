@@ -1,10 +1,34 @@
+use std::io::stdin;
+
 use vozclient::VozCore;
-use vozclient::VozResponseMapping;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let voz = VozCore::new("voz.vn".to_string());
-    voz.set_user("replace your user cookie".to_string(), "replace your session cookie".to_string());
-    let user = voz.get_current_user().await.voz_response();
-    println!("{:?}", user);
+    let mut username = String::new();
+    let mut password = String::new();
+    println!("Your username: ");
+    stdin().read_line(&mut username).unwrap();
+    println!("Your password: ");
+    stdin().read_line(&mut password).unwrap();
+    let result = voz.login(username, password).await?;
+    match result {
+        vozclient::models::LoginResult::Success { user, session, info } => {
+            println!("Login successfully with user info: {:?}", info);
+        },
+        vozclient::models::LoginResult::MFA { token, url } => {
+            let mut code = String::new();
+            let mut provider = String::new();
+            println!("Your code: ");
+            stdin().read_line(&mut code).unwrap();
+            println!("Your provider: ");
+            stdin().read_line(&mut provider).unwrap();
+            let login = voz.mfa(token, url, code, provider).await?;
+            match login {
+                vozclient::models::LoginResult::Success { user, session, info } => println!("Login successfully with user info: {:?}", info),
+                vozclient::models::LoginResult::MFA { token, url} => println!("This should not happend :|")
+            }
+        }
+    }
+    Ok(())
 }
