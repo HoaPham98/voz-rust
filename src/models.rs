@@ -15,7 +15,7 @@ pub struct ForumItem {
     pub thread_number: String,
     pub message_number: String,
     pub forum_type: String,
-    pub is_unread: bool
+    pub is_read: bool
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -56,13 +56,19 @@ pub struct ThreadPrefix {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
+    pub id: String,
     pub name: String,
     pub avatar: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(tag="type", rename_all = "camelCase")]
 pub enum LoginResult {
-    MFA { token: String, code: String, provider: String },
-    Success { user: String, session: String }
+    MFA { session: String, token: String },
+    Success { user: String, session: String, info: User }
+}
+
+pub struct LoginInfo {
+    pub url: String,
+    pub token: String
 }
