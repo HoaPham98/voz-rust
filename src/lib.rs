@@ -45,8 +45,8 @@ impl VozCore {
         Ok(results)
     }
 
-    pub async fn get_forum(&self, id: String, forum_type: String) -> Result<Forum, Box<dyn std::error::Error>> {
-        let content = self.client.get(format!("/{forum_type}/{id}")).send().await?.text().await?;
+    pub async fn get_forum(&self, id: String, forum_type: String, page: i64) -> Result<Forum, Box<dyn std::error::Error>> {
+        let content = self.client.get(format!("/{forum_type}/{id}/page-{page}")).send().await?.text().await?;
         let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
         let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
         let result = parse_forum(node)?;
@@ -128,7 +128,7 @@ mod tests {
     #[tokio::test]
     async fn test_forum() {
         let core = VozCore::new("voz.vn".to_string());
-        let result = core.get_forum("17".to_string(), "f".to_string()).await.voz_response();
+        let result = core.get_forum("17".to_string(), "f".to_string(), 1).await.voz_response();
         println!("{:?}", result);
     }
 
