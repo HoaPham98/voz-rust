@@ -54,6 +54,15 @@ pub struct ThreadPrefix {
     pub prefix_type: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Thread {
+    pub title: String,
+    pub current_page: String,
+    pub total_page: String,
+    pub content: String
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: String,

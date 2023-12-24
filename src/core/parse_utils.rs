@@ -108,6 +108,27 @@ pub fn parse_current_user(node: Node) -> Result<User, Box<dyn Error>> {
     Ok(User { id, name, avatar })
 }
 
+pub fn parse_thread_detail(node: Node) -> Result<Thread, Box<dyn Error>> {
+    let title = node.find(Class("p-title-value")).next().ok_or("Not found thread title")?.text();
+    let total_page_node = node.find(Class("pageNav-main")).next();
+    let mut current_page = "1".to_string();
+    let mut total_page = "1".to_string();
+    match total_page_node {
+        Some(p_node) => {
+            let children = p_node.find(Class("pageNav-page"));
+            children.for_each(|x| {
+                if x.attr("class").unwrap_or("").contains("pageNav-page--current") {
+                    current_page = x.text().trimmed();
+                }
+                total_page = x.text().trimmed();
+            })
+        },
+        None => {}
+    }
+    let content = node.find(And(Name("article"), Class("js-post"))).map(|x| x.html()).collect::<Vec<String>>().join("").replace("\n", "");
+    Ok(Thread { title, current_page, total_page, content })
+}
+
 #[cfg(test)]
 mod tests {
     use std::{path::Path, fs};
@@ -188,5 +209,17 @@ mod tests {
         let result = parse_current_user(document.nth(3).unwrap()).unwrap();
         assert_eq!(result.id, "1932329");
         assert_eq!(result.avatar, "https://data.voz.vn/avatars/s/1932/1932329.jpg?1700878980");
+    }
+
+    #[test]
+    fn test_thread_detail() {
+        let path = Path::new("resources/tests/thread.html");
+        let content = fs::read_to_string(path).expect("File not found");
+        let document = Document::from_read(content.as_bytes()).expect("Invalid Html");
+        
+        let result = parse_thread_detail(document.nth(3).unwrap()).unwrap();
+        assert_eq!(result.current_page, "1");
+        assert_eq!(result.total_page, "3");
+        assert_eq!(result.content.split("</article>").count(), 41);
     }
 }
