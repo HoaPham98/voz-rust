@@ -60,6 +60,7 @@ pub struct Thread {
     pub title: String,
     pub current_page: String,
     pub total_page: String,
+    pub can_reply: bool,
     pub content: String
 }
 
@@ -83,6 +84,7 @@ pub struct NewThread {
     pub title: String,
     pub current_page: String,
     pub total_page: String,
+    pub can_reply: bool,
     pub posts: Vec<Post>
 }
 
