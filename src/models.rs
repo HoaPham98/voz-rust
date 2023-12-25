@@ -77,6 +77,43 @@ pub enum LoginResult {
     Success { user: String, session: String, info: User }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NewThread {
+    pub title: String,
+    pub current_page: String,
+    pub total_page: String,
+    pub posts: Vec<Post>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Post {
+    pub post_id: String,
+    pub post_type: String,
+    pub author_id: String,
+    pub author_name: String,
+    pub author_avatar: String,
+    pub created: String,
+    pub last_edited: Option<String>,
+    pub reactions: Option<String>,
+    pub html_content: String,
+    pub contents: Vec<ContentType>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum ContentType {
+    HTML { content: String },
+    QuoteBlock { author_id: Option<String>, author_name: Option<String>, post_id: Option<String>, content: Box<Vec<ContentType>> },
+    CodeBlock { language: String, content: String },
+    Spoiler { title: String, content: Box<Vec<ContentType>> },
+    Embeded { site: String, title: String, link: String },
+    Table { content: String }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginInfo {
     pub url: String,
     pub token: String

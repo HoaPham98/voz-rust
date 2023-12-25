@@ -1,7 +1,7 @@
 mod core;
 pub mod models;
 use std::{fmt::Debug, collections::HashMap};
-use core::parse_utils::{parse_catagories, parse_forum, parse_login_form, parse_current_user, parse_thread_detail};
+use core::parse_utils::{parse_catagories, parse_forum, parse_login_form, parse_current_user, parse_thread_detail, parse_new_thread_detail};
 use select::{document::Document, predicate::Class};
 use serde::Serialize;
 use core::session::Session;
@@ -124,6 +124,18 @@ impl VozCore {
         Ok(result)
     }
 
+    pub async fn get_new_thread(&self, id: String, page: Option<i64>) -> Result<NewThread, Box<dyn std::error::Error>> {
+        let uri = match page {
+            Some(p) => format!("page-{p}"),
+            None => "unread".to_string()
+        };
+        let content = self.client.get(format!("/t/{id}/{uri}")).send().await?.text().await?;
+        let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
+        let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
+        let result = parse_new_thread_detail(node)?;
+        Ok(result)
+    }
+
 }
 
 #[cfg(test)]
@@ -163,6 +175,13 @@ mod tests {
     async fn test_thread() {
         let core = VozCore::new("voz.vn".to_string());
         let result = core.get_thread("896639".to_string(), None).await.voz_response();
+        println!("{:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_new_thread() {
+        let core = VozCore::new("voz.vn".to_string());
+        let result = core.get_new_thread("896639".to_string(), Some(1)).await.voz_response();
         println!("{:?}", result);
     }
 }
