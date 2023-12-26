@@ -106,9 +106,11 @@ pub struct Post {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum ContentType {
-    HTML { content: String },
+    Html { content: String },
+    Image { src: String },
     QuoteBlock { author_id: Option<String>, author_name: Option<String>, post_id: Option<String>, content: Box<Vec<ContentType>> },
     CodeBlock { language: String, content: String },
+    UrlBlock { thumbnail: Option<String>, title: String, content: String, host: String, url: String },
     Spoiler { title: String, content: Box<Vec<ContentType>> },
     Embeded { site: String, title: String, link: String },
     Table { content: String }

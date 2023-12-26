@@ -4,7 +4,9 @@ use select::{predicate::*, node::Node};
 
 use crate::models::*;
 
-trait TrimmedString {
+use super::post_parse_utils::parse_content;
+
+pub trait TrimmedString {
     fn trimmed(&self) -> String;
 }
 
@@ -165,7 +167,7 @@ pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
     let reactions: Option<String> = node.find(And(Class("reactionsBar"), Class("is-active"))).next().map(|n| n.html());
     let content_node = node.find(Class("message-body").descendant(Class("bbWrapper"))).next().ok_or("Not found content node")?;
     let html_content: String = content_node.html();
-    let contents: Vec<ContentType> = parse_post_contents(node)?;
+    let contents: Vec<ContentType> = parse_post_contents(content_node)?;
 
     Ok(Post { post_id, post_type, author_id, author_name, author_avatar, created, last_edited, reactions, html_content, contents })
 }
@@ -173,72 +175,20 @@ pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
 pub fn parse_post_contents(node: Node) -> Result<Vec<ContentType>, Box<dyn Error>> {
     let mut content_string: String = "".to_string();
     let mut results: Vec<ContentType> = vec![];
-    node.children().for_each(|x| {
-        let class = x.attr("class").unwrap_or("");
-        if class.contains("bbCodeBlock--quote") {
-            if !content_string.is_empty() && content_string.ne("<br>") {
-                results.push(ContentType::HTML { content: content_string.clone() });
+    for x in node.children() {
+        let content_type = parse_content(x)?;
+        if content_type.is_some() {
+            if !content_string.trimmed().is_empty() && content_string.trimmed().ne("<br>") {
+                results.push(ContentType::Html { content: content_string.clone() });
                 content_string.clear();
             }
-
-            let author_id = x.attr("data-attributes").unwrap_or("").split(" ").last().map(|i| i.to_string()).filter(|i| !i.is_empty());
-            let author_name = x.attr("data-quote").map(|i| i.to_string()).filter(|i| !i.is_empty());
-            let post_id =  x.attr("data-source").unwrap_or("").split(" ").last().map(|i| i.to_string()).filter(|i| !i.is_empty());
-            let content_node = x.find(Class("bbCodeBlock-expandContent")).next().and_then(|i| parse_post_contents(i).ok());
-            if content_node.is_some() {
-                results.push(ContentType::QuoteBlock { author_id, author_name, post_id, content: Box::new(content_node.unwrap()) });
-            }
-        } else if class.contains("bbCodeBlock--code") {
-            if !content_string.is_empty() && content_string.ne("<br>") {
-                results.push(ContentType::HTML { content: content_string.clone() });
-                content_string.clear();
-            }
-
-            let lang = x.find(Attr("data-lang", ())).next().and_then(|i| i.attr("data-lang")).map(|s| s.to_string()).unwrap_or_default();
-            let content = x.find(Name("code")).next().map(|i| i.text().trimmed());
-            if content.is_some() {
-                results.push(ContentType::CodeBlock { language: lang, content: content.unwrap() });
-            }
-        } else if class.contains("bbCodeSpoiler") {
-            if !content_string.is_empty() && content_string.ne("<br>") {
-                results.push(ContentType::HTML { content: content_string.clone() });
-                content_string.clear();
-            }
-
-            let title = x.find(Class("bbCodeSpoiler-button-title")).next().map(|i| i.text().trimmed()).unwrap_or_default();
-            let content = x.find(Class("bbCodeBlock-content")).next().and_then(|i| parse_post_contents(i).ok());
-            if content.is_some() {
-                results.push(ContentType::Spoiler { title: title, content: Box::new(content.unwrap()) })
-            }
-        } else if class.contains("bbMediaJustifier") {
-            if !content_string.is_empty() && content_string.ne("<br>") {
-                results.push(ContentType::HTML { content: content_string.clone() });
-                content_string.clear();
-            }
-
-            let site = x.attr("data-media-site-id").unwrap_or_default().to_string();
-            let title = x.attr("data-media-key").unwrap_or_default().to_string();
-            let link = x.find(Attr("data-href", ())).next().and_then(|n| n.attr("data-href")).map(|s| s.to_string()).unwrap_or_default();
-            if !link.is_empty() {
-                results.push(ContentType::Embeded { site, title, link });
-            }
-
-        } else if class.contains("table") && content_string.ne("<br>") {
-            if !content_string.is_empty() {
-                results.push(ContentType::HTML { content: content_string.clone() });
-                content_string.clear();
-            }
-            let table = x.find(Name("table")).next().map(|n| n.html()).unwrap_or_default().trimmed();
-            if !table.is_empty() {
-                results.push(ContentType::Table { content: table })
-            }
-
+            results.push(content_type.unwrap())
         } else {
             content_string += x.html().trimmed().as_str();
         }
-    });
+    }
     if !content_string.is_empty() && content_string.ne("<br>") {
-        results.push(ContentType::HTML { content: content_string.clone() });
+        results.push(ContentType::Html { content: content_string.clone() });
     }
     Ok(results)
 }

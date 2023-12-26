@@ -991,8 +991,7 @@ dependencies = [
 [[package]]
 name = "select"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f9da09dc3f4dfdb6374cbffff7a2cffcec316874d4429899eefdc97b3b94dcd"
+source = "git+https://github.com/Billy-Sheppard/select.rs.git?branch=add-send#c554143904c087a88203b06d233d5a03fc619a32"
 dependencies = [
  "bit-set",
  "html5ever",

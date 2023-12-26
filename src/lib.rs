@@ -141,6 +141,7 @@ impl VozCore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::prelude::*;
 
     #[tokio::test]
     async fn test_categories() {
@@ -179,9 +180,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_new_thread() {
+    async fn test_new_thread() -> Result<(), Box<dyn std::error::Error>> {
         let core = VozCore::new("voz.vn".to_string());
         let result = core.get_new_thread("896639".to_string(), Some(1)).await.voz_response();
-        println!("{:?}", result);
+        let json_str = serde_json::to_string(&result).unwrap();
+        let mut file = std::fs::File::create("output.json").ok().ok_or("Error")?;
+        file.write_all(json_str.as_bytes())?;
+        Ok(())
     }
 }
