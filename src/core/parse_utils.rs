@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, collections::HashMap};
 
 use select::{predicate::*, node::Node};
 
@@ -161,7 +161,8 @@ pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
     let user_node = node.find(Class("message-user")).next().ok_or("Not found user node for post")?;
     let author_id = user_node.find(Class("avatar--m")).next().ok_or("Not found author id node")?.attr("data-user-id").ok_or("Not found author id")?.to_string();
     let author_name = node.attr("data-author").ok_or("Not found author name attr")?.to_string().trimmed();
-    let author_avatar = user_node.find(Class("avatar--m").child(Name("img"))).next().ok_or("Not found avatar node")?.attr("src").ok_or("Not found avatar")?.to_string();
+    let avatar_node = user_node.find(Class("avatar--m")).next();
+    let author_avatar = parse_avatar_image(avatar_node, author_name.clone());
     let created = node.find(Class("message-attribution-main").descendant(Name("time"))).next().ok_or("Not found created node")?.text().trimmed();
     let last_edited: Option<String> = node.find(Class("message-lastEdit").descendant(Name("time"))).next().map(|n| n.text().trimmed());
     let reactions: Option<String> = node.find(And(Class("reactionsBar"), Class("is-active"))).next().map(|n| n.html());
@@ -191,6 +192,25 @@ pub fn parse_post_contents(node: Node) -> Result<Vec<ContentType>, Box<dyn Error
         results.push(ContentType::Html { content: content_string.clone() });
     }
     Ok(results)
+}
+
+fn parse_avatar_image(node: Option<Node>, username: String) -> String {
+    let letter = username.replace(" ", "+");
+    let base = format!("https://ui-avatars.com/api/?length=1&rounded=true&name={letter}");
+    match node {
+        Some(node) => {
+            let class = node.attr("class").unwrap_or_default();
+            if class.contains("avatar--default--dynamic") {
+                let style = node.attr("style").unwrap_or_default().split("; ").filter_map(|p| p.split_once(": #")).collect::<HashMap<_,_>>();
+                let background_color = style.get("background-color").map(|s| format!("&background={s}")).unwrap_or_default();
+                let color = style.get("color").map(|s| format!("&color={s}")).unwrap_or_default();
+                format!("{base}{background_color}{color}")
+            } else {
+                node.find(Name("img")).next().and_then(|n| n.attr("src")).map(|s| s.to_string()).unwrap_or(base)
+            }
+        },
+        None => base
+    }
 }
 
 #[cfg(test)]

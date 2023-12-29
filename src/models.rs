@@ -98,7 +98,9 @@ pub struct Post {
     pub author_avatar: String,
     pub created: String,
     pub last_edited: Option<String>,
+    #[serde(skip_serializing)]
     pub reactions: Option<String>,
+    #[serde(skip_serializing)]
     pub html_content: String,
     pub contents: Vec<ContentType>
 }

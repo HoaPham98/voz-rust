@@ -173,16 +173,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_thread() {
+    async fn test_thread() -> Result<(), Box<dyn std::error::Error>>{
         let core = VozCore::new("voz.vn".to_string());
-        let result = core.get_thread("896639".to_string(), None).await.voz_response();
-        println!("{:?}", result);
+        let result = core.get_thread("898118".to_string(), None).await?;
+        let json_str = result.content;
+        let mut file = std::fs::File::create("output2.html").ok().ok_or("Error")?;
+        file.write_all(json_str.as_bytes())?;
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_new_thread() -> Result<(), Box<dyn std::error::Error>> {
         let core = VozCore::new("voz.vn".to_string());
-        let result = core.get_new_thread("896639".to_string(), Some(1)).await.voz_response();
+        let result = core.get_new_thread("2974".to_string(), Some(1)).await.voz_response();
         let json_str = serde_json::to_string(&result).unwrap();
         let mut file = std::fs::File::create("output.json").ok().ok_or("Error")?;
         file.write_all(json_str.as_bytes())?;
