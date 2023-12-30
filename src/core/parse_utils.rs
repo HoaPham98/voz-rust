@@ -184,6 +184,8 @@ pub fn parse_post_contents(node: Node) -> Result<Vec<ContentType>, Box<dyn Error
                 content_string.clear();
             }
             results.push(content_type.unwrap())
+        } else if x.name().is_some_and(|s| s.eq("script")) {
+
         } else {
             content_string += x.html().trimmed().as_str();
         }
