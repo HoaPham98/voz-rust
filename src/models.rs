@@ -54,16 +54,6 @@ pub struct ThreadPrefix {
     pub prefix_type: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Thread {
-    pub title: String,
-    pub current_page: String,
-    pub total_page: String,
-    pub can_reply: bool,
-    pub content: String
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: String,
@@ -80,12 +70,14 @@ pub enum LoginResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct NewThread {
+pub struct Thread {
+    pub prefix:  Option<ThreadPrefix>,
     pub title: String,
     pub current_page: String,
     pub total_page: String,
     pub can_reply: bool,
-    pub posts: Vec<Post>
+    pub posts: Vec<Post>,
+    pub reactions: Vec<Reaction>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -98,11 +90,30 @@ pub struct Post {
     pub author_avatar: String,
     pub created: String,
     pub last_edited: Option<String>,
-    #[serde(skip_serializing)]
-    pub reactions: Option<String>,
-    #[serde(skip_serializing)]
     pub html_content: String,
-    pub contents: Vec<ContentType>
+    pub warning_message: Option<String>,
+    pub position: i64,
+    pub can_edit: bool,
+    pub can_delete: bool,
+    pub can_react: bool,
+    pub is_reacted_to: bool,
+    pub visitor_reaction_id: Option<i64>,
+    pub reactions: Option<ReactionSummary>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ReactionSummary {
+    pub icons: Vec<String>,
+    pub message: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Reaction {
+    pub id: i64,
+    pub icon: String,
+    pub title: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,7 +1,7 @@
 mod core;
 pub mod models;
 use std::{fmt::Debug, collections::HashMap};
-use core::parse_utils::{parse_catagories, parse_forum, parse_login_form, parse_current_user, parse_thread_detail, parse_new_thread_detail};
+use core::parse_utils::{parse_catagories, parse_forum, parse_login_form, parse_current_user, parse_thread_detail};
 use select::{document::Document, predicate::Class};
 use serde::Serialize;
 use core::session::Session;
@@ -123,19 +123,6 @@ impl VozCore {
         let result = parse_thread_detail(node)?;
         Ok(result)
     }
-
-    pub async fn get_new_thread(&self, id: String, page: Option<i64>) -> Result<NewThread, Box<dyn std::error::Error>> {
-        let uri = match page {
-            Some(p) => format!("page-{p}"),
-            None => "unread".to_string()
-        };
-        let content = self.client.get(format!("/t/{id}/{uri}")).send().await?.text().await?;
-        let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
-        let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
-        let result = parse_new_thread_detail(node)?;
-        Ok(result)
-    }
-
 }
 
 #[cfg(test)]
@@ -173,22 +160,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_thread() -> Result<(), Box<dyn std::error::Error>>{
-        let core = VozCore::new("voz.vn".to_string());
-        let result = core.get_thread("898118".to_string(), None).await?;
-        let json_str = result.content;
-        let mut file = std::fs::File::create("output2.html").ok().ok_or("Error")?;
-        file.write_all(json_str.as_bytes())?;
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn test_new_thread() -> Result<(), Box<dyn std::error::Error>> {
         let core = VozCore::new("voz.vn".to_string());
-        let result = core.get_new_thread("2974".to_string(), Some(1)).await.voz_response();
+        let result = core.get_thread("899758".to_string(), Some(1)).await?;
         let json_str = serde_json::to_string(&result).unwrap();
         let mut file = std::fs::File::create("output.json").ok().ok_or("Error")?;
         file.write_all(json_str.as_bytes())?;
+        // for post in result.posts {
+        //     println!("{:?}", post.contents);
+        // }
         Ok(())
     }
 }

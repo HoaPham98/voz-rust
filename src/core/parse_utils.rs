@@ -4,7 +4,7 @@ use select::{predicate::*, node::Node};
 
 use crate::models::*;
 
-use super::post_parse_utils::parse_content;
+use super::post_parse_utils::{parse_content, parse_reactions};
 
 pub trait TrimmedString {
     fn trimmed(&self) -> String;
@@ -128,30 +128,8 @@ pub fn parse_thread_detail(node: Node) -> Result<Thread, Box<dyn Error>> {
         },
         None => {}
     }
-    let content = node.find(And(Name("article"), Class("js-post"))).map(|x| x.html()).collect::<Vec<String>>().join("").replace("\n", "");
-    Ok(Thread { title, current_page, total_page, can_reply, content })
-}
-
-pub fn parse_new_thread_detail(node: Node) -> Result<NewThread, Box<dyn Error>> {
-    let title = node.find(Class("p-title-value")).next().ok_or("Not found thread title")?.text();
-    let total_page_node = node.find(Class("pageNav-main")).next();
-    let mut current_page = "1".to_string();
-    let mut total_page = "1".to_string();
-    let can_reply = node.find(And(Name("form"), Class("js-quickReply"))).next().is_some();
-    match total_page_node {
-        Some(p_node) => {
-            let children = p_node.find(Class("pageNav-page"));
-            children.for_each(|x| {
-                if x.attr("class").unwrap_or("").contains("pageNav-page--current") {
-                    current_page = x.text().trimmed();
-                }
-                total_page = x.text().trimmed();
-            })
-        },
-        None => {}
-    }
     let content = node.find(And(Name("article"), Class("js-post"))).map(|x| parse_post(x).unwrap()).collect::<Vec<Post>>();
-    Ok(NewThread { title, current_page, total_page, can_reply, posts: content })
+    Ok(Thread { title, current_page, total_page, can_reply, posts: content, prefix: None, reactions: vec![] })
 }
 
 pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
@@ -165,12 +143,17 @@ pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
     let author_avatar = parse_avatar_image(avatar_node, author_name.clone());
     let created = node.find(Class("message-attribution-main").descendant(Name("time"))).next().ok_or("Not found created node")?.text().trimmed();
     let last_edited: Option<String> = node.find(Class("message-lastEdit").descendant(Name("time"))).next().map(|n| n.text().trimmed());
-    let reactions: Option<String> = node.find(And(Class("reactionsBar"), Class("is-active"))).next().map(|n| n.html());
+    let reactions: Option<ReactionSummary> = node.find(And(Class("reactionsBar"), Class("is-active"))).next().and_then(|n| parse_reactions(n));
     let content_node = node.find(Class("message-body").descendant(Class("bbWrapper"))).next().ok_or("Not found content node")?;
     let html_content: String = content_node.html();
-    let contents: Vec<ContentType> = parse_post_contents(content_node)?;
-
-    Ok(Post { post_id, post_type, author_id, author_name, author_avatar, created, last_edited, reactions, html_content, contents })
+    let can_edit = node.find(Class("actionBar-action--edit")).count() > 0;
+    let can_delete = node.find(Class("actionBar-action--delete")).count() > 0;
+    let can_react = node.find(Class("actionBar-action--reaction")).count() > 0;
+    let can_reply = node.find(Class("actionBar-action--reply")).count() > 0;
+    let is_reacted_to = node.find(Class("has-reaction")).count() > 0;
+    let visitor_reaction_id = node.find(Class("has-reaction")).next().and_then(|n| n.attr("data-reaction-id")).and_then(|s| s.parse::<i64>().ok());
+    let position = node.find(Class("message-attribution-opposite--list").descendant(Name("li"))).last().and_then(|n| n.text().replace("#", "").parse::<i64>().ok()).unwrap_or(0);
+    Ok(Post { post_id, post_type, author_id, author_name, author_avatar, created, last_edited, reactions, html_content, warning_message: None, position, can_edit, can_delete, can_react, is_reacted_to, visitor_reaction_id })
 }
 
 pub fn parse_post_contents(node: Node) -> Result<Vec<ContentType>, Box<dyn Error>> {
@@ -311,6 +294,19 @@ mod tests {
         assert_eq!(result.avatar, "https://data.voz.vn/avatars/s/1932/1932329.jpg?1700878980");
     }
 
+    // #[test]
+    // fn test_thread_detail() {
+    //     let path = Path::new("resources/tests/thread.html");
+    //     let content = fs::read_to_string(path).expect("File not found");
+    //     let document = Document::from_read(content.as_bytes()).expect("Invalid Html");
+        
+    //     let result = parse_new_thread_detail(document.nth(3).unwrap()).unwrap();
+    //     assert_eq!(result.current_page, "1");
+    //     assert_eq!(result.total_page, "3");
+    //     assert_eq!(result.content.split("</article>").count(), 41);
+    //     assert_eq!(result.can_reply, true);
+    // }
+
     #[test]
     fn test_thread_detail() {
         let path = Path::new("resources/tests/thread.html");
@@ -318,19 +314,6 @@ mod tests {
         let document = Document::from_read(content.as_bytes()).expect("Invalid Html");
         
         let result = parse_thread_detail(document.nth(3).unwrap()).unwrap();
-        assert_eq!(result.current_page, "1");
-        assert_eq!(result.total_page, "3");
-        assert_eq!(result.content.split("</article>").count(), 41);
-        assert_eq!(result.can_reply, true);
-    }
-
-    #[test]
-    fn test_new_thread_detail() {
-        let path = Path::new("resources/tests/thread.html");
-        let content = fs::read_to_string(path).expect("File not found");
-        let document = Document::from_read(content.as_bytes()).expect("Invalid Html");
-        
-        let result = parse_new_thread_detail(document.nth(3).unwrap()).unwrap();
         assert_eq!(result.current_page, "1");
         assert_eq!(result.total_page, "3");
         assert_eq!(result.posts.len(), 20);
