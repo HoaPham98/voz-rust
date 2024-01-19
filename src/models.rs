@@ -95,6 +95,8 @@ pub struct Post {
     pub position: i64,
     pub can_edit: bool,
     pub can_delete: bool,
+    pub can_reply: bool,
+    pub can_multiple_quote: bool,
     pub can_react: bool,
     pub is_reacted_to: bool,
     pub visitor_reaction_id: Option<i64>,

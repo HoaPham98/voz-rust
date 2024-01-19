@@ -150,10 +150,11 @@ pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
     let can_delete = node.find(Class("actionBar-action--delete")).count() > 0;
     let can_react = node.find(Class("actionBar-action--reaction")).count() > 0;
     let can_reply = node.find(Class("actionBar-action--reply")).count() > 0;
+    let can_multiple_quote = node.find(Class("actionBar-action--reply")).count() > 0;
     let is_reacted_to = node.find(Class("has-reaction")).count() > 0;
     let visitor_reaction_id = node.find(Class("has-reaction")).next().and_then(|n| n.attr("data-reaction-id")).and_then(|s| s.parse::<i64>().ok());
     let position = node.find(Class("message-attribution-opposite--list").descendant(Name("li"))).last().and_then(|n| n.text().replace("#", "").parse::<i64>().ok()).unwrap_or(0);
-    Ok(Post { post_id, post_type, author_id, author_name, author_avatar, created, last_edited, reactions, html_content, warning_message: None, position, can_edit, can_delete, can_react, is_reacted_to, visitor_reaction_id })
+    Ok(Post { post_id, post_type, author_id, author_name, author_avatar, created, last_edited, reactions, html_content, warning_message: None, position, can_edit, can_delete, can_react, is_reacted_to, visitor_reaction_id, can_reply, can_multiple_quote })
 }
 
 pub fn parse_post_contents(node: Node) -> Result<Vec<ContentType>, Box<dyn Error>> {
