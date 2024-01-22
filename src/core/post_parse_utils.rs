@@ -1,5 +1,5 @@
 use reqwest::Url;
-use select::{predicate::*, node::Node};
+use select::{predicate::*, node::Node, document::Document};
 use crate::models::*;
 use super::parse_utils::{parse_post_contents, TrimmedString};
 
@@ -127,4 +127,19 @@ pub fn parse_reactions(node: Node) -> Option<ReactionSummary> {
         return None;
     }
     Some(ReactionSummary { icons, message: message.unwrap().text() })
+}
+
+pub fn parse_list_reactions(content: String) -> Result<Vec<Reaction>, Box<dyn std::error::Error>> {
+    let mut reactions: Vec<Reaction> = vec![];
+    let document = Document::from_read(content.as_bytes())?;
+    let nodes = document.find(Class("reaction"));
+    for node in nodes {
+        let id = node.attr("data-reaction-id").unwrap_or("0").to_string().parse::<i64>()?;
+        let child = node.find(Name("img")).next().ok_or("Not found reaction info")?;
+        let icon = child.attr("src").unwrap_or("unknown.png").to_string();
+        let title = child.attr("title").unwrap_or("title").to_string();
+
+        reactions.push(Reaction { id, icon, title });
+    }
+    Ok(reactions)
 }

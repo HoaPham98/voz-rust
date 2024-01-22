@@ -4,7 +4,7 @@ use select::{predicate::*, node::Node};
 
 use crate::models::*;
 
-use super::post_parse_utils::{parse_content, parse_reactions};
+use super::post_parse_utils::{parse_content, parse_reactions, parse_list_reactions};
 
 pub trait TrimmedString {
     fn trimmed(&self) -> String;
@@ -129,7 +129,8 @@ pub fn parse_thread_detail(node: Node) -> Result<Thread, Box<dyn Error>> {
         None => {}
     }
     let content = node.find(And(Name("article"), Class("js-post"))).map(|x| parse_post(x).unwrap()).collect::<Vec<Post>>();
-    Ok(Thread { title, current_page, total_page, can_reply, posts: content, prefix: None, reactions: vec![] })
+    let reactions = node.find(Attr("id", "xfReactTooltipTemplate")).next().and_then(|n| parse_list_reactions(n.text()).ok()).unwrap_or_default();
+    Ok(Thread { title, current_page, total_page, can_reply, posts: content, prefix: None, reactions })
 }
 
 pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {

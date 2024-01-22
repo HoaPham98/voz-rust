@@ -33,9 +33,12 @@ impl VozCore {
 }
 
 impl VozCore {
-    pub fn set_user(&self, user: String, session: String) {
+    pub fn set_user(&self, user: String, session: String, tfa: Option<String>) {
         self.client.set_cookie("xf_user".to_string(), user);
         self.client.set_cookie("xf_session".to_string(), session);
+        if tfa.is_some() {
+            self.client.set_cookie("xf_tfa_trust".to_string(), tfa.unwrap());
+        }
     }
     
     pub async fn get_categories(&self) -> Result<Vec<Category>, Box<dyn std::error::Error>> {
@@ -119,7 +122,7 @@ impl VozCore {
         };
         let content = self.client.get(format!("/t/{id}/{uri}")).send().await?.text().await?;
         let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
-        let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
+        let node = document.nth(0).ok_or("p-body does not exist")?;
         let result = parse_thread_detail(node)?;
         Ok(result)
     }
@@ -154,7 +157,7 @@ mod tests {
     #[tokio::test]
     async fn test_current_user() {
         let core = VozCore::new("voz.vn".to_string());
-        core.set_user("xxxxx".to_string(), "xxxxx".to_string());
+        core.set_user("xxxxx".to_string(), "xxxxx".to_string(), None);
         let result = core.get_current_user().await.voz_response();
         println!("{:?}", result);
     }
@@ -163,7 +166,7 @@ mod tests {
     async fn test_new_thread() -> Result<(), Box<dyn std::error::Error>> {
         let core = VozCore::new("voz.vn".to_string());
         let result = core.get_thread("899758".to_string(), Some(1)).await?;
-        let json_str = serde_json::to_string(&result).unwrap();
+        let json_str = serde_json::to_string_pretty(&result).unwrap();
         let mut file = std::fs::File::create("output.json").ok().ok_or("Error")?;
         file.write_all(json_str.as_bytes())?;
         // for post in result.posts {
