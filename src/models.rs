@@ -64,8 +64,8 @@ pub struct User {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag="type", rename_all = "camelCase")]
 pub enum LoginResult {
-    MFA { token: String, url: String },
-    Success { user: String, session: String, info: User }
+    MFA { url: String },
+    Success { user: String, session: String, tfa_trust: Option<String>, info: User }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

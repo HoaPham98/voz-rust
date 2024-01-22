@@ -1,11 +1,16 @@
 
+use nom::AsBytes;
 use reqwest::header::{HeaderMap, HOST};
-use reqwest::{Client, Url, RequestBuilder};
+use reqwest::{Client, Url, Request, Response};
 use reqwest_cookie_store::{CookieStoreMutex, RawCookie, CookieStore};
+use reqwest_middleware::{Middleware, Next, ClientBuilder, ClientWithMiddleware, RequestBuilder};
+use select::document::Document;
+use select::predicate::Name;
+use task_local_extensions::Extensions;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// `Session` is a user-friendly `Client` wrapper, which automatically handles cookies and load/store
 /// cookies from/to the specified path.
@@ -14,7 +19,24 @@ pub struct Session {
     #[allow(dead_code)] // just make clippy happy
     state: Arc<State>,
     base_url: String,
-    client: Client,
+    client: ClientWithMiddleware,
+}
+
+#[async_trait::async_trait]
+impl Middleware for State {
+    async fn handle(
+        &self,
+        req: Request,
+        extensions: &mut Extensions,
+        next: Next<'_>,
+    ) -> reqwest_middleware::Result<Response> {
+        let mut res = next.run(req, extensions).await?;
+        let content = res.chunk().await?.ok_or(reqwest_middleware::Error::Middleware(anyhow::anyhow!("")))?;
+        let document = Document::from_read(content.as_bytes()).ok().ok_or(reqwest_middleware::Error::Middleware(anyhow::anyhow!("")))?;
+        let csrf = document.find(Name("html")).next().and_then(|n| n.attr("data-csrf")).map(str::to_string);
+        *self.csrf.lock().unwrap() = csrf;
+        reqwest_middleware::Result::Ok(res)
+    }
 }
 
 impl Session {
@@ -22,17 +44,19 @@ impl Session {
     /// When `Session` is dropped(more specifically, when `State` is dropped), it will store cookies
     /// to `cookie_store_path`.
     pub fn new(base_url: String) -> Session {
-        let state = State::new();
-        let state = Arc::new(state);
+        let state_raw = State::new();
+        let state = Arc::new(state_raw);
 
         let mut headers = HeaderMap::new();
         headers.append(HOST, base_url.parse().unwrap());
 
-        let client = Client::builder()
+        let client_raw = Client::builder()
             .user_agent("vozForums/366 CFNetwork/1331.0.7 Darwin/21.4.0")
             .default_headers(headers)
             .cookie_provider(state.cookie_store.clone())
             .build().unwrap();
+
+        let client = ClientBuilder::new(client_raw).with_arc(state.clone()).build();
 
         Session { state, base_url, client }
     }
@@ -56,11 +80,16 @@ impl Session {
         let url = format!("https://{0}", self.base_url).parse::<Url>().unwrap();
         self.state.cookie_store.lock().unwrap().insert_raw(&cookie, &url).ok();
     }
+
+    pub fn get_csrf(&self) -> Option<String> {
+        let result = self.state.csrf.lock().unwrap();
+        result.clone()
+    }
 }
 
 impl Deref for Session {
-    type Target = Client;
-    fn deref(&self) -> &Client {
+    type Target = ClientWithMiddleware;
+    fn deref(&self) -> &ClientWithMiddleware {
         &self.client
     }
 }
@@ -68,15 +97,17 @@ impl Deref for Session {
 #[derive(Debug)]
 struct State {
     cookie_store: Arc<CookieStoreMutex>,
+    csrf: Arc<Mutex<Option<String>>>
 }
 
 impl State {
     pub fn new() -> State {
         let cookie_store = CookieStore::default();
         let cookie_store = Arc::new(CookieStoreMutex::new(cookie_store));
-
+        let csrf = Arc::new(Mutex::<Option<String>>::new(None));
         State {
             cookie_store,
+            csrf: csrf
         }
     }
 }

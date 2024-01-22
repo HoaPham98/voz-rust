@@ -71,11 +71,11 @@ impl VozCore {
             if cookies.contains_key("xf_user") {
                 let node = document.find(Class("p-nav")).next().ok_or("p-nav does not exist")?;
                 let user_info = parse_current_user(node)?;
-                Ok(LoginResult::Success { user: cookies.get("xf_user").unwrap().to_string(), session: cookies.get("xf_session").unwrap().to_string(), info: user_info})
+                Ok(LoginResult::Success { user: cookies.get("xf_user").unwrap().to_string(), session: cookies.get("xf_session").unwrap().to_string(), tfa_trust: None, info: user_info})
             } else {
                 let node = document.find(Class("p-body")).next().ok_or("p-body does not exist")?;
                 let login_info = parse_login_form(node)?;
-                Ok(LoginResult::MFA { token: login_info.token, url: login_info.url })
+                Ok(LoginResult::MFA { url: login_info.url })
             }
         } else {
             Err("Incorrect login information. Please try again".into())
@@ -83,9 +83,9 @@ impl VozCore {
         
     }
 
-    pub async fn mfa(&self, token: String, url: String, code: String, provider: String) -> Result<LoginResult, Box<dyn std::error::Error>> {
+    pub async fn mfa(&self, url: String, code: String, provider: String) -> Result<LoginResult, Box<dyn std::error::Error>> {
         let form: HashMap<&str, _> = HashMap::from([
-            ("_xfToken", token),
+            ("_xfToken", self.client.get_csrf().unwrap_or_default()),
             ("trust", 1.to_string()),
             ("confirm", 1.to_string()),
             ("remember", 1.to_string()),
@@ -98,7 +98,7 @@ impl VozCore {
             let document = Document::from_read(content.as_bytes()).ok().ok_or("Invalid request")?;
             let node = document.find(Class("p-nav")).next().ok_or("p-nav does not exist")?;
             let user_info = parse_current_user(node)?;
-            Ok(LoginResult::Success { user: cookies.get("xf_user").unwrap().to_string(), session: cookies.get("xf_session").unwrap().to_string(), info: user_info})
+            Ok(LoginResult::Success { user: cookies.get("xf_user").unwrap().to_string(), session: cookies.get("xf_session").unwrap().to_string(), tfa_trust: cookies.get("xf_tfa_trust").map(|a| a.to_string()), info: user_info})
         } else {
             Err("Incorrect login information. Please try again".into())
         }

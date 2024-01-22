@@ -13,20 +13,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdin().read_line(&mut password).unwrap();
     let result = voz.login(username, password).await?;
     match result {
-        vozclient::models::LoginResult::Success { user, session, info } => {
+        vozclient::models::LoginResult::Success { user, session, info, tfa_trust } => {
             println!("Login successfully with user info: {:?}", info);
         },
-        vozclient::models::LoginResult::MFA { token, url } => {
+        vozclient::models::LoginResult::MFA { url } => {
             let mut code = String::new();
             let mut provider = String::new();
             println!("Your code: ");
             stdin().read_line(&mut code).unwrap();
             println!("Your provider: ");
             stdin().read_line(&mut provider).unwrap();
-            let login = voz.mfa(token, url, code, provider).await?;
+            let login = voz.mfa(url, code, provider).await?;
             match login {
-                vozclient::models::LoginResult::Success { user, session, info } => println!("Login successfully with user info: {:?}", info),
-                vozclient::models::LoginResult::MFA { token, url} => println!("This should not happend :|")
+                vozclient::models::LoginResult::Success { user, session, info , tfa_trust} => println!("Login successfully with user info: {:?}", info),
+                vozclient::models::LoginResult::MFA { url } => println!("This should not happend :|")
             }
         }
     }
