@@ -15,6 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match result {
         vozclient::models::LoginResult::Success { user, session, info, tfa_trust } => {
             println!("Login successfully with user info: {:?}", info);
+            println!("User {:?}, session: {:?}", user, session);
         },
         vozclient::models::LoginResult::MFA { url } => {
             let mut code = String::new();

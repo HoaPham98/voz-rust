@@ -77,6 +77,7 @@ pub struct Thread {
     pub total_page: String,
     pub can_reply: bool,
     pub posts: Vec<Post>,
+    pub posts_html: String,
     pub reactions: Vec<Reaction>
 }
 

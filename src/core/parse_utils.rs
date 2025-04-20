@@ -130,7 +130,8 @@ pub fn parse_thread_detail(node: Node) -> Result<Thread, Box<dyn Error>> {
     }
     let content = node.find(And(Name("article"), Class("js-post"))).map(|x| parse_post(x).unwrap()).collect::<Vec<Post>>();
     let reactions = node.find(Attr("id", "xfReactTooltipTemplate")).next().and_then(|n| parse_list_reactions(n.text()).ok()).unwrap_or_default();
-    Ok(Thread { title, current_page, total_page, can_reply, posts: content, prefix: None, reactions })
+    let posts_html = node.find(And(Name("article"), Class("js-post"))).map(|x| x.html()).collect::<Vec<String>>().join("").replace("\n", "");
+    Ok(Thread { title, current_page, total_page, can_reply, posts: content, posts_html, prefix: None, reactions })
 }
 
 pub fn parse_post(node: Node) -> Result<Post, Box<dyn Error>> {
