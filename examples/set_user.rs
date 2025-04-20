@@ -1,4 +1,4 @@
-use vozclient::VozCore;
+use vozclient::core::voz_core::VozCore;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -2,7 +2,7 @@ use std::{error::Error, collections::HashMap};
 
 use select::{predicate::*, node::Node};
 
-use crate::models::*;
+use crate::core::models::*;
 
 use super::post_parse_utils::{parse_content, parse_reactions, parse_list_reactions};
 

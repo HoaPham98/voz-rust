@@ -1,7 +1,7 @@
 use reqwest::Url;
 use select::{predicate::*, node::Node, document::Document};
-use crate::models::*;
-use super::parse_utils::{parse_post_contents, TrimmedString};
+use models::*;
+use super::{models, parse_utils::{parse_post_contents, TrimmedString}};
 
 enum Type {
     Quote, Code, Image, Spoiler, Embedded, Url, Table

@@ -1,6 +1,7 @@
 use std::io::stdin;
 
-use vozclient::VozCore;
+use vozclient::core::{models, voz_core::VozCore};
+use models::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,11 +14,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdin().read_line(&mut password).unwrap();
     let result = voz.login(username, password).await?;
     match result {
-        vozclient::models::LoginResult::Success { user, session, info, tfa_trust } => {
+        LoginResult::Success { user, session, info, tfa_trust } => {
             println!("Login successfully with user info: {:?}", info);
             println!("User {:?}, session: {:?}", user, session);
         },
-        vozclient::models::LoginResult::MFA { url } => {
+        LoginResult::MFA { url } => {
             let mut code = String::new();
             let mut provider = String::new();
             println!("Your code: ");
@@ -26,8 +27,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             stdin().read_line(&mut provider).unwrap();
             let login = voz.mfa(url, code, provider).await?;
             match login {
-                vozclient::models::LoginResult::Success { user, session, info , tfa_trust} => println!("Login successfully with user info: {:?}", info),
-                vozclient::models::LoginResult::MFA { url } => println!("This should not happend :|")
+                LoginResult::Success { user, session, info , tfa_trust} => println!("Login successfully with user info: {:?}", info),
+                LoginResult::MFA { url } => println!("This should not happend :|")
             }
         }
     }
